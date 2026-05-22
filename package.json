@@ -1,6 +1,6 @@
 {
-  "name": "yankeeler-redneckler-v16-socketio",
-  "version": "16.0.0",
+  "name": "yankeeler-redneckler-v17-input-fix",
+  "version": "17.0.0",
   "description": "Yankeeler vs Redneckler - Socket.IO multiplayer cowboy duel",
   "main": "server.js",
   "scripts": {

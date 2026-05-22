@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yankeeler vs Redneckler v16 - Socket.IO</title>
+  <title>Yankeeler vs Redneckler v17 - Input Fix</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -290,7 +290,7 @@
       <div id="lobby" class="lobby">
         <div class="lobbyBox">
           <div class="lobbyTitle">KOVBOYLAR</div>
-          <div class="lobbySub">Gerçek Socket.IO multiplayer sürüm</div>
+          <div class="lobbySub">Gerçek Socket.IO multiplayer sürüm - v17 input fix</div>
 
           <button id="createBtn" class="createBtn">ODA OLUŞTUR</button>
 
@@ -352,6 +352,13 @@
     let lastInput = "";
     let loopStarted = false;
 
+    function isTypingInInput(event) {
+      const target = event && event.target;
+      if (!target) return false;
+      const tag = String(target.tagName || "").toLowerCase();
+      return tag === "input" || tag === "textarea" || target.isContentEditable;
+    }
+
     function focusGame() {
       try { canvas.focus({ preventScroll: true }); }
       catch (e) { canvas.focus(); }
@@ -365,6 +372,10 @@
     }
 
     function onKeyDown(e) {
+      if (isTypingInInput(e)) {
+        return;
+      }
+
       focusGame();
       keys.add(e.key.toLowerCase());
       if (["arrowleft","arrowright","arrowup","arrowdown"," "].includes(e.key.toLowerCase())) e.preventDefault();
@@ -375,6 +386,10 @@
     }
 
     function onKeyUp(e) {
+      if (isTypingInInput(e)) {
+        return;
+      }
+
       keys.delete(e.key.toLowerCase());
       if (["arrowleft","arrowright","arrowup","arrowdown"," "].includes(e.key.toLowerCase())) e.preventDefault();
     }
@@ -390,14 +405,16 @@
       setTimeout(focusGame, 500);
     });
 
-    createBtn.addEventListener("click", () => {
+    createBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       createBtn.disabled = true;
       joinBtn.disabled = true;
       statusEl.textContent = "Oda oluşturuluyor...";
       socket.emit("createRoom");
     });
 
-    joinBtn.addEventListener("click", () => {
+    joinBtn.addEventListener("click", (e) => {
+      e.stopPropagation();
       const code = cleanCode(roomInput.value);
       if (code.length !== 4) {
         statusEl.textContent = "4 karakterli oda kodunu yaz.";
@@ -410,6 +427,26 @@
       socket.emit("joinRoom", { code });
     });
 
+    roomInput.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      roomInput.focus();
+    });
+
+    roomInput.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+      roomInput.focus();
+    });
+
+    roomInput.addEventListener("click", (e) => {
+      e.stopPropagation();
+      roomInput.focus();
+    });
+
+    roomInput.addEventListener("focus", () => {
+      keys.clear();
+      if (focusLayer) focusLayer.classList.remove("show");
+    });
+
     roomInput.addEventListener("input", () => {
       roomInput.value = cleanCode(roomInput.value);
     });
@@ -418,7 +455,8 @@
       if (e.key === "Enter") joinBtn.click();
     });
 
-    copyBtn.addEventListener("click", async () => {
+    copyBtn.addEventListener("click", async (e) => {
+      e.stopPropagation();
       const code = roomCodeText.textContent.trim();
       try {
         await navigator.clipboard.writeText(code);
@@ -429,7 +467,7 @@
     });
 
     socket.on("connect", () => {
-      statusEl.textContent = "Bağlandı. Oda oluştur veya kodla katıl.";
+      statusEl.textContent = "Bağlandı. Kodu yazmak için kutuya tıkla; klavye artık inputta çalışır.";
     });
 
     socket.on("connect_error", () => {

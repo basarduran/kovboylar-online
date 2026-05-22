@@ -1,4 +1,4 @@
-# Yankeeler vs Redneckler v16 - Socket.IO
+# Yankeeler vs Redneckler v17 - Socket.IO
 
 Bu sürüm Playroom kullanmaz. Gerçek Node.js + Socket.IO sunucusu kullanır.
 
@@ -32,3 +32,7 @@ npm start
 ```
 
 Port otomatik olarak `process.env.PORT` üzerinden alınır.
+
+## v17 düzeltmesi
+
+Oda kodu giriş kutusu aktifken global oyun klavye dinleyicileri devre dışı bırakıldı. Böylece input kutusuna yazarken canvas focus'u inputtan çalmaz.
