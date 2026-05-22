@@ -6,7 +6,10 @@ const path = require("path");
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
-  cors: { origin: "*" }
+  cors: { origin: "*" },
+  transports: ["websocket", "polling"],
+  pingInterval: 10000,
+  pingTimeout: 20000
 });
 
 app.use(express.static(path.join(__dirname, "public")));
@@ -15,7 +18,7 @@ const PORT = process.env.PORT || 3000;
 const WIN_SCORE = 5;
 const START_NO_FIRE_MS = 1000;
 const FINAL_CUTSCENE_MS = 2000;
-const TICK_MS = 1000 / 60;
+const TICK_MS = 1000 / 60; // 60 FPS sunucu tick
 
 const CANVAS = { w: 1000, h: 600 };
 const movementBand = CANVAS.h / 3;
@@ -29,7 +32,18 @@ const TEAM = {
 
 const rooms = new Map();
 
-function makeRoomCode() {
+function cleanRoomCode(value) {
+  return String(value || "")
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9]/g, "")
+    .slice(0, 8);
+}
+
+function makeRoomCode(preferredCode = "") {
+  const preferred = cleanRoomCode(preferredCode);
+  if (preferred) return preferred;
+
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
   let code = "";
   do {
@@ -83,8 +97,8 @@ function freshState(matchTop = 0, matchBottom = 0) {
   };
 }
 
-function createRoom(ownerSocket) {
-  const code = makeRoomCode();
+function createRoom(ownerSocket, preferredCode = "") {
+  const code = makeRoomCode(preferredCode);
   const room = {
     code,
     players: new Map(),
@@ -148,7 +162,11 @@ function tickRoom(room) {
     }
   }
 
-  io.to(room.code).emit("state", s);
+  if (s.mode === "playing") {
+    io.to(room.code).volatile.emit("state", s);
+  } else {
+    io.to(room.code).emit("state", s);
+  }
 }
 
 function updatePlayer(player, input, band, dt, now, state) {
@@ -245,13 +263,24 @@ function restartRoom(room) {
 }
 
 io.on("connection", (socket) => {
-  socket.on("createRoom", () => {
-    const room = createRoom(socket);
+  socket.on("createRoom", (payload = {}) => {
+    const preferredCode = cleanRoomCode(payload.code);
+    if (preferredCode && preferredCode.length < 3) {
+      socket.emit("createError", { message: "Oda kodu en az 3 karakter olmalı." });
+      return;
+    }
+
+    if (preferredCode && rooms.has(preferredCode)) {
+      socket.emit("createError", { message: "Bu oda kodu kullanılıyor. Başka kod seç." });
+      return;
+    }
+
+    const room = createRoom(socket, preferredCode);
     socket.emit("roomCreated", { code: room.code });
   });
 
   socket.on("joinRoom", ({ code }) => {
-    const cleanCode = String(code || "").trim().toUpperCase();
+    const cleanCode = cleanRoomCode(code);
     const room = rooms.get(cleanCode);
 
     if (!room) {
@@ -311,5 +340,5 @@ function clamp(value, min, max) {
 }
 
 server.listen(PORT, () => {
-  console.log(`Yankeeler vs Redneckler v16 server running on port ${PORT}`);
+  console.log(`Yankeeler vs Redneckler v18 server running on port ${PORT}`);
 });

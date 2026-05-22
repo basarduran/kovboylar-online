@@ -1,4 +1,4 @@
-# Yankeeler vs Redneckler v17 - Socket.IO
+# Yankeeler vs Redneckler v18 - Socket.IO
 
 Bu sürüm Playroom kullanmaz. Gerçek Node.js + Socket.IO sunucusu kullanır.
 
@@ -36,3 +36,11 @@ Port otomatik olarak `process.env.PORT` üzerinden alınır.
 ## v17 düzeltmesi
 
 Oda kodu giriş kutusu aktifken global oyun klavye dinleyicileri devre dışı bırakıldı. Böylece input kutusuna yazarken canvas focus'u inputtan çalmaz.
+
+## v18 değişiklikleri
+
+- Final cutscene eski retro piksel ölüş animasyonuna döndürüldü.
+- Host artık oda kodunu manuel belirleyebilir. Boş bırakırsa sunucu otomatik kod üretir.
+- Oyun state yayını `volatile.emit` ile gönderilir; eski pozisyon paketleri birikmez.
+- Client bağlantısı WebSocket'i önceliklendirir.
+- Socket.IO ping ayarları daha kısa aralıkla bağlantı sağlığını kontrol edecek şekilde ayarlandı.

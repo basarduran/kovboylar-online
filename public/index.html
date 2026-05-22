@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Yankeeler vs Redneckler v17 - Input Fix</title>
+  <title>Yankeeler vs Redneckler v18 - Cutscene Lag RoomCode</title>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -146,11 +146,22 @@
       opacity: .55;
       cursor: not-allowed;
     }
-    .createBtn {
-      width: min(100%, 360px);
-      padding: 14px 18px;
-      font-size: clamp(18px, 2.2vw, 28px);
+    .hostCodeRow {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 10px;
+      flex-wrap: wrap;
       margin-bottom: 18px;
+    }
+    .createBtn {
+      width: min(100%, 260px);
+      padding: 14px 18px;
+      font-size: clamp(18px, 2.2vw, 26px);
+      margin-bottom: 0;
+    }
+    .hostCodeInput {
+      width: 190px;
     }
     .joinRow {
       display: flex;
@@ -290,9 +301,12 @@
       <div id="lobby" class="lobby">
         <div class="lobbyBox">
           <div class="lobbyTitle">KOVBOYLAR</div>
-          <div class="lobbySub">Gerçek Socket.IO multiplayer sürüm - v17 input fix</div>
+          <div class="lobbySub">v18: eski final cutscene + lag iyileştirme + manuel oda kodu</div>
 
-          <button id="createBtn" class="createBtn">ODA OLUŞTUR</button>
+          <div class="hostCodeRow">
+            <input id="hostCodeInput" class="roomInput hostCodeInput" maxlength="8" placeholder="KOD BELİRLE" />
+            <button id="createBtn" class="createBtn">ODA OLUŞTUR</button>
+          </div>
 
           <div class="joinRow">
             <input id="roomInput" class="roomInput" maxlength="4" placeholder="ODA KODU" />
@@ -305,7 +319,7 @@
             <button id="copyBtn" class="copyBtn">KODU KOPYALA</button>
           </div>
 
-          <div id="status" class="status">Host ODA OLUŞTUR’a basar. Guest aynı linkten girip kodu yazar.</div>
+          <div id="status" class="status">Host isterse kodu kendi belirler, sonra ODA OLUŞTUR’a basar. Guest aynı linkten kodu yazar.</div>
         </div>
       </div>
 
@@ -329,6 +343,7 @@
     const ctx = canvas.getContext("2d");
     const lobby = document.getElementById("lobby");
     const createBtn = document.getElementById("createBtn");
+    const hostCodeInput = document.getElementById("hostCodeInput");
     const joinBtn = document.getElementById("joinBtn");
     const roomInput = document.getElementById("roomInput");
     const codePanel = document.getElementById("codePanel");
@@ -344,7 +359,7 @@
     const matchTopEl = document.getElementById("matchTop");
     const matchBottomEl = document.getElementById("matchBottom");
 
-    const socket = io();
+    const socket = io({ transports: ["websocket", "polling"] });
     const keys = new Set();
 
     let myRole = "spectator";
@@ -407,10 +422,11 @@
 
     createBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      const code = cleanCode(hostCodeInput.value);
       createBtn.disabled = true;
       joinBtn.disabled = true;
-      statusEl.textContent = "Oda oluşturuluyor...";
-      socket.emit("createRoom");
+      statusEl.textContent = code ? (code + " kodlu oda oluşturuluyor...") : "Oda oluşturuluyor...";
+      socket.emit("createRoom", { code });
     });
 
     joinBtn.addEventListener("click", (e) => {
@@ -425,6 +441,34 @@
       joinBtn.disabled = true;
       statusEl.textContent = code + " odasına katılınıyor...";
       socket.emit("joinRoom", { code });
+    });
+
+    hostCodeInput.addEventListener("pointerdown", (e) => {
+      e.stopPropagation();
+      hostCodeInput.focus();
+    });
+
+    hostCodeInput.addEventListener("mousedown", (e) => {
+      e.stopPropagation();
+      hostCodeInput.focus();
+    });
+
+    hostCodeInput.addEventListener("click", (e) => {
+      e.stopPropagation();
+      hostCodeInput.focus();
+    });
+
+    hostCodeInput.addEventListener("focus", () => {
+      keys.clear();
+      if (focusLayer) focusLayer.classList.remove("show");
+    });
+
+    hostCodeInput.addEventListener("input", () => {
+      hostCodeInput.value = cleanCode(hostCodeInput.value);
+    });
+
+    hostCodeInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") createBtn.click();
     });
 
     roomInput.addEventListener("pointerdown", (e) => {
@@ -499,6 +543,12 @@
     });
 
     socket.on("joinError", ({ message }) => {
+      createBtn.disabled = false;
+      joinBtn.disabled = false;
+      statusEl.textContent = message;
+    });
+
+    socket.on("createError", ({ message }) => {
       createBtn.disabled = false;
       joinBtn.disabled = false;
       statusEl.textContent = message;
@@ -664,31 +714,95 @@
     function drawFinalCutscene(state) {
       const elapsed = Date.now() - state.finalStart;
       const t = clamp(elapsed / 2000, 0, 1);
+      const loser = state.finalLoserRole === "top" ? state.top : state.bottom;
 
-      ctx.fillStyle = "rgba(0,0,0,.72)";
+      ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      if (Math.floor(t * 12) % 2 === 0) {
-        ctx.fillStyle = "rgba(255,211,109,.18)";
+      if (t < 0.18) {
+        ctx.fillStyle = "rgba(190, 20, 20, 0.38)";
         ctx.fillRect(0, 0, canvas.width, canvas.height);
       }
 
-      ctx.textAlign = "center";
       ctx.fillStyle = "#ffd36d";
-      ctx.font = "bold 58px Courier New";
-      ctx.fillText(state.finalWinner + " KAZANDI!", canvas.width / 2, canvas.height / 2 - 40);
+      ctx.font = "bold 42px Courier New";
+      ctx.textAlign = "center";
+      ctx.fillText(state.finalWinner + " KAZANDI!", canvas.width / 2, 78);
 
       ctx.fillStyle = "#fff1b9";
-      ctx.font = "bold 24px Courier New";
-      ctx.fillText("MAÇ BİTTİ", canvas.width / 2, canvas.height / 2 + 10);
+      ctx.font = "bold 20px Courier New";
+      ctx.fillText("RETRO FİNAL CUTSCENE", canvas.width / 2, 112);
 
-      const y = canvas.height / 2 + 74;
-      for (let i = 0; i < 26; i++) {
-        const x = canvas.width / 2 - 170 + i * 14;
-        const h = 10 + Math.sin((Date.now() / 80) + i) * 8;
-        ctx.fillStyle = i % 2 === 0 ? "#ffd36d" : "#ff8b75";
-        ctx.fillRect(x, y - h, 8, h);
+      const cx = canvas.width / 2;
+      const baseY = canvas.height / 2 + 92;
+      const scale = 4;
+      const shake = t < 0.28 ? Math.sin(elapsed / 30) * 10 : 0;
+      const fall = Math.max(0, t - 0.35) * 130;
+      const squash = t > 0.70 ? 1 - (t - 0.70) * 0.8 : 1;
+      const tilt = Math.max(0, t - 0.25) * 0.7;
+
+      ctx.save();
+      ctx.translate(cx + shake, baseY + fall);
+      ctx.rotate(tilt);
+      ctx.scale(scale, scale * squash);
+      drawBigPixelCowboy(loser);
+      ctx.restore();
+
+      const particleCount = 42;
+      for (let i = 0; i < particleCount; i++) {
+        const a = (i * 137.5) * Math.PI / 180;
+        const speed = 20 + (i % 9) * 9;
+        const burst = Math.max(0, Math.min(1, (t - 0.12) / 0.58));
+        const px = cx + Math.cos(a) * speed * burst * 2.2;
+        const py = baseY - 75 + Math.sin(a) * speed * burst * 1.7 + burst * burst * 90;
+        const size = 4 + (i % 4) * 3;
+        ctx.fillStyle = i % 3 === 0 ? "#bf1f1f" : (i % 3 === 1 ? loser.coat : "#f2c37a");
+        ctx.fillRect(Math.round(px / 4) * 4, Math.round(py / 4) * 4, size, size);
       }
+
+      ctx.fillStyle = "#fff1b9";
+      ctx.font = "bold 22px Courier New";
+      ctx.fillText("MAÇ BİTTİ...", canvas.width / 2, canvas.height - 52);
+    }
+
+    function drawBigPixelCowboy(p) {
+      if (!p) return;
+      const y = -90;
+
+      ctx.fillStyle = "rgba(0,0,0,0.38)";
+      ctx.fillRect(-22, 80, 44, 6);
+
+      ctx.fillStyle = p.pants;
+      ctx.fillRect(-18, y + 108, 14, 30);
+      ctx.fillRect(4, y + 108, 14, 30);
+
+      ctx.fillStyle = p.coat;
+      ctx.fillRect(-26, y + 62, 52, 54);
+
+      ctx.fillStyle = "#f0d18a";
+      ctx.fillRect(-6, y + 62, 12, 54);
+
+      ctx.fillStyle = p.coat;
+      ctx.fillRect(-42, y + 68, 16, 38);
+      ctx.fillRect(26, y + 68, 16, 38);
+
+      ctx.fillStyle = p.skin;
+      ctx.fillRect(-20, y + 28, 40, 34);
+
+      ctx.fillStyle = "#111";
+      ctx.fillRect(-10, y + 42, 6, 6);
+      ctx.fillRect(5, y + 42, 6, 6);
+
+      ctx.fillStyle = p.hat;
+      ctx.fillRect(-36, y + 20, 72, 10);
+      ctx.fillRect(-23, y + 2, 46, 20);
+
+      ctx.fillStyle = "#641313";
+      ctx.fillRect(-18, y + 74, 36, 12);
+      ctx.fillRect(-30, y + 86, 60, 8);
+
+      ctx.fillStyle = "#ffffff";
+      ctx.fillRect(-15, y + 48, 30, 5);
     }
 
     function drawCenterText(title, sub) {
