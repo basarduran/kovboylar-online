@@ -18,6 +18,7 @@ const PORT = process.env.PORT || 3000;
 const WIN_SCORE = 5;
 const START_NO_FIRE_MS = 1000;
 const FINAL_CUTSCENE_MS = 2000;
+const HIT_INVULNERABLE_MS = 500;
 const TICK_MS = 1000 / 90; // v19: 90 FPS sunucu tick
 
 const CANVAS = { w: 1000, h: 600 };
@@ -73,7 +74,9 @@ function newPlayer(role) {
     maxAmmo: 6,
     reloading: false,
     reloadEnd: 0,
-    fireLock: false
+    fireLock: false,
+    invulnerableUntil: 0,
+    hitFlashUntil: 0
   };
 }
 
@@ -226,15 +229,25 @@ function updateBullets(room, dt, now) {
 
     const target = b.ownerRole === "top" ? s.bottom : s.top;
     if (rectsOverlap(b, target)) {
-      roundHit(room, b.ownerRole, target.role, now);
+      // Vurulma sonrası 0,5 sn boyunca tekrar vurulamaz.
+      if (target.invulnerableUntil && now < target.invulnerableUntil) {
+        s.bullets.splice(i, 1);
+        continue;
+      }
+      roundHit(room, b.ownerRole, target.role, now, target);
       break;
     }
   }
 }
 
-function roundHit(room, winnerRole, loserRole, now) {
+function roundHit(room, winnerRole, loserRole, now, targetPlayer) {
   const s = room.state;
   s.bullets = [];
+
+  if (targetPlayer) {
+    targetPlayer.invulnerableUntil = now + HIT_INVULNERABLE_MS;
+    targetPlayer.hitFlashUntil = now + HIT_INVULNERABLE_MS;
+  }
 
   if (winnerRole === "top") s.scoreTop++;
   else s.scoreBottom++;
@@ -251,6 +264,14 @@ function roundHit(room, winnerRole, loserRole, now) {
     s.finalWinner = winnerName;
     s.finalLoserRole = loserRole;
   }
+
+  const target = loserRole === "top" ? s.top : s.bottom;
+  io.to(room.code).emit("hitEffect", {
+    role: loserRole,
+    x: target.x + target.w / 2,
+    y: target.y + target.h / 2,
+    until: now + HIT_INVULNERABLE_MS
+  });
 
   // Her skor sonrası konum korunur. Sadece mermiler temizlenir.
 }
@@ -340,5 +361,5 @@ function clamp(value, min, max) {
 }
 
 server.listen(PORT, () => {
-  console.log(`Yankeeler vs Redneckler v19 server running on port ${PORT}`);
+  console.log(`Yankeeler vs Redneckler v20 server running on port ${PORT}`);
 });

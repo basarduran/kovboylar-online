@@ -1,4 +1,4 @@
-# Yankeeler vs Redneckler v19 - Socket.IO
+# Yankeeler vs Redneckler v20 - Socket.IO
 
 Bu sürüm Playroom kullanmaz. Gerçek Node.js + Socket.IO sunucusu kullanır.
 
@@ -53,3 +53,11 @@ Oda kodu giriş kutusu aktifken global oyun klavye dinleyicileri devre dışı b
 - Socket.IO yalnızca WebSocket transport ile çalışacak şekilde ayarlandı.
 - Sunucu tick oranı 60 FPS'ten 90 FPS'e çıkarıldı.
 - Oyun state yayınında volatile + compress(false) kullanılıyor.
+
+## v20 değişiklikleri
+
+- Her isabet anında vurulan oyuncunun üzerinde basit kan efekti çıkar.
+- Vurulan oyuncu 0,5 saniye kırmızı flaş gibi yanıp söner.
+- Bu 0,5 saniyelik sürede oyuncu tekrar vurulamaz.
+- Hit event güvenilir Socket.IO eventi olarak ayrıca gönderilir; efekt/ses state paketinden bağımsız çalışır.
+- Vurulma sesi Web Audio API ile tarayıcıda sentezlenir; harici ses dosyası gerekmez.
