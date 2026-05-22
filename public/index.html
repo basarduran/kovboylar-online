@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Yankeeler vs Redneckler v16 - Socket.IO</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0d0d0d;
+      color: #f7e4b5;
+      font-family: "Courier New", monospace;
+      overflow: hidden;
+    }
+    .page {
+      width: min(96vw, 1100px);
+      height: min(96vh, 780px);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .panel {
+      border: 4px solid #6b3f1d;
+      background: linear-gradient(180deg, #2d1608, #120804);
+      box-shadow: 0 0 0 4px #d99a42, 0 0 28px rgba(255,177,74,.3);
+      padding: 8px 14px;
+      text-align: center;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .scoreboard {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: clamp(18px, 4vw, 58px);
+      color: #fff3c4;
+      font-weight: bold;
+      text-shadow: 3px 3px #000;
+    }
+    .teamBlock {
+      min-width: 160px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      line-height: 1;
+    }
+    .teamName {
+      font-size: clamp(15px, 1.9vw, 26px);
+      margin-bottom: 4px;
+    }
+    .teamScore {
+      font-size: clamp(34px, 5vw, 70px);
+    }
+    .centerScoreBlock {
+      min-width: 126px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 4px;
+    }
+    .vsBlock {
+      font-size: clamp(18px, 2.4vw, 34px);
+      color: #ffd36d;
+      line-height: 1;
+    }
+    .matchCounter {
+      border: 2px solid #7a4b20;
+      background: rgba(0,0,0,.28);
+      color: #fff1b9;
+      padding: 3px 8px;
+      font-size: clamp(10px, 1vw, 14px);
+      line-height: 1.15;
+      min-width: 82px;
+    }
+    .blueScore { color: #76c7ff; }
+    .redScore { color: #ff8b75; }
+    .gameWrap {
+      position: relative;
+      flex: 1;
+      min-height: 380px;
+      border: 6px solid #4a2b13;
+      box-shadow: inset 0 0 0 4px #bd7a2a, 0 12px 36px rgba(0,0,0,.65);
+      background: #c78b4b;
+      overflow: hidden;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      image-rendering: pixelated;
+      background: #c78b4b;
+    }
+    canvas:focus {
+      outline: 4px solid #ffd36d;
+      outline-offset: -8px;
+    }
+    .lobby {
+      position: absolute;
+      inset: 0;
+      z-index: 8;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.75);
+      padding: 20px;
+      text-align: center;
+    }
+    .lobby.hidden { display: none; }
+    .lobbyBox {
+      width: min(92%, 660px);
+      border: 5px solid #ffd36d;
+      background: linear-gradient(180deg, #321508, #120804);
+      box-shadow: 0 0 0 5px #6b3f1d, 0 0 34px rgba(255,211,109,.35);
+      padding: 24px;
+      color: #fff1b9;
+      text-shadow: 3px 3px #000;
+    }
+    .lobbyTitle {
+      font-size: clamp(32px, 5vw, 64px);
+      color: #ffd36d;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .lobbySub {
+      font-size: clamp(12px, 1.4vw, 18px);
+      margin-bottom: 18px;
+      color: #ffe8b6;
+      text-transform: none;
+    }
+    button {
+      border: 3px solid #ffd36d;
+      background: #2c1207;
+      color: #ffd36d;
+      font-family: "Courier New", monospace;
+      font-weight: bold;
+      cursor: pointer;
+      text-transform: uppercase;
+      box-shadow: 3px 3px #000;
+    }
+    button:disabled {
+      opacity: .55;
+      cursor: not-allowed;
+    }
+    .createBtn {
+      width: min(100%, 360px);
+      padding: 14px 18px;
+      font-size: clamp(18px, 2.2vw, 28px);
+      margin-bottom: 18px;
+    }
+    .joinRow {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      flex-wrap: wrap;
+      margin-bottom: 16px;
+    }
+    .roomInput {
+      width: 180px;
+      border: 3px solid #7b4a22;
+      background: #fff1b9;
+      color: #1d0b03;
+      font-family: "Courier New", monospace;
+      font-size: 24px;
+      font-weight: bold;
+      padding: 10px 12px;
+      text-align: center;
+      text-transform: uppercase;
+      outline: none;
+      letter-spacing: 3px;
+    }
+    .joinBtn {
+      padding: 10px 14px;
+      font-size: 20px;
+    }
+    .codePanel {
+      display: none;
+      width: min(100%, 440px);
+      margin: 12px auto;
+      border: 3px solid #7b4a22;
+      background: rgba(0,0,0,.3);
+      padding: 14px;
+    }
+    .codePanel.show { display: block; }
+    .smallText {
+      font-size: 13px;
+      color: #ffe8b6;
+    }
+    .roomCodeText {
+      font-size: clamp(40px, 5.5vw, 70px);
+      color: #76c7ff;
+      letter-spacing: 7px;
+      font-weight: bold;
+      margin: 5px 0 10px;
+    }
+    .copyBtn {
+      border: 2px solid #ffd36d;
+      background: #1e0d05;
+      color: #ffd36d;
+      padding: 8px 12px;
+    }
+    .status {
+      min-height: 24px;
+      color: #ffd36d;
+      font-size: 14px;
+      margin-top: 10px;
+      line-height: 1.35;
+    }
+    .focusLayer {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0,0,0,.42);
+      z-index: 4;
+      cursor: pointer;
+      text-align: center;
+    }
+    .focusLayer.show { display: flex; }
+    .focusBox {
+      border: 4px solid #ffd36d;
+      background: rgba(35,15,5,.92);
+      box-shadow: 0 0 0 4px #6b3f1d, 0 0 28px rgba(255,211,109,.4);
+      padding: 18px 26px;
+      color: #fff1b9;
+      text-shadow: 3px 3px #000;
+    }
+    .focusTitle {
+      font-size: clamp(24px, 4vw, 48px);
+      color: #ffd36d;
+      font-weight: bold;
+      margin-bottom: 8px;
+    }
+    .message {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      flex-direction: column;
+      background: rgba(0,0,0,.68);
+      text-align: center;
+      color: #ffd36d;
+      text-shadow: 4px 4px #000;
+      padding: 24px;
+      z-index: 5;
+    }
+    .message.show { display: flex; }
+    .message h1 {
+      margin: 0 0 12px;
+      font-size: clamp(34px, 6vw, 72px);
+    }
+    .message p {
+      margin: 4px 0;
+      color: #fff0bd;
+      font-size: clamp(14px, 2vw, 24px);
+    }
+  </style>
+</head>
+<body>
+  <div class="page">
+    <div class="panel">
+      <div class="scoreboard">
+        <div class="teamBlock blueScore">
+          <div class="teamName">YANKEELER</div>
+          <div id="scoreTop" class="teamScore">0</div>
+        </div>
+        <div class="centerScoreBlock">
+          <div class="vsBlock">VS</div>
+          <div class="matchCounter">
+            <div>MAÇ</div>
+            <div><span id="matchTop">0</span> - <span id="matchBottom">0</span></div>
+          </div>
+        </div>
+        <div class="teamBlock redScore">
+          <div class="teamName">REDNECKLER</div>
+          <div id="scoreBottom" class="teamScore">0</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="gameWrap">
+      <canvas id="game" width="1000" height="600" tabindex="0"></canvas>
+
+      <div id="lobby" class="lobby">
+        <div class="lobbyBox">
+          <div class="lobbyTitle">KOVBOYLAR</div>
+          <div class="lobbySub">Gerçek Socket.IO multiplayer sürüm</div>
+
+          <button id="createBtn" class="createBtn">ODA OLUŞTUR</button>
+
+          <div class="joinRow">
+            <input id="roomInput" class="roomInput" maxlength="4" placeholder="ODA KODU" />
+            <button id="joinBtn" class="joinBtn">KODLA KATIL</button>
+          </div>
+
+          <div id="codePanel" class="codePanel">
+            <div class="smallText">ARKADAŞINA BU KODU GÖNDER</div>
+            <div id="roomCodeText" class="roomCodeText">----</div>
+            <button id="copyBtn" class="copyBtn">KODU KOPYALA</button>
+          </div>
+
+          <div id="status" class="status">Host ODA OLUŞTUR’a basar. Guest aynı linkten girip kodu yazar.</div>
+        </div>
+      </div>
+
+      <div id="focusLayer" class="focusLayer">
+        <div class="focusBox">
+          <div class="focusTitle">OYUNA TIKLA</div>
+          <div class="focusText">Tam ekran sonrası hareket etmiyorsa buraya bir kez tıkla.</div>
+        </div>
+      </div>
+
+      <div id="message" class="message">
+        <h1 id="winnerText">Kazanan</h1>
+        <p id="winnerSub">R ile yeni maça başla</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script>
+    const canvas = document.getElementById("game");
+    const ctx = canvas.getContext("2d");
+    const lobby = document.getElementById("lobby");
+    const createBtn = document.getElementById("createBtn");
+    const joinBtn = document.getElementById("joinBtn");
+    const roomInput = document.getElementById("roomInput");
+    const codePanel = document.getElementById("codePanel");
+    const roomCodeText = document.getElementById("roomCodeText");
+    const copyBtn = document.getElementById("copyBtn");
+    const statusEl = document.getElementById("status");
+    const focusLayer = document.getElementById("focusLayer");
+    const messageEl = document.getElementById("message");
+    const winnerTextEl = document.getElementById("winnerText");
+    const winnerSubEl = document.getElementById("winnerSub");
+    const scoreTopEl = document.getElementById("scoreTop");
+    const scoreBottomEl = document.getElementById("scoreBottom");
+    const matchTopEl = document.getElementById("matchTop");
+    const matchBottomEl = document.getElementById("matchBottom");
+
+    const socket = io();
+    const keys = new Set();
+
+    let myRole = "spectator";
+    let gameState = null;
+    let lastInput = "";
+    let loopStarted = false;
+
+    function focusGame() {
+      try { canvas.focus({ preventScroll: true }); }
+      catch (e) { canvas.focus(); }
+      if (focusLayer) focusLayer.classList.remove("show");
+    }
+
+    function showFocusLayer() {
+      if (focusLayer && document.activeElement !== canvas && lobby.classList.contains("hidden")) {
+        focusLayer.classList.add("show");
+      }
+    }
+
+    function onKeyDown(e) {
+      focusGame();
+      keys.add(e.key.toLowerCase());
+      if (["arrowleft","arrowright","arrowup","arrowdown"," "].includes(e.key.toLowerCase())) e.preventDefault();
+
+      if (e.key.toLowerCase() === "r" && myRole !== "spectator") {
+        socket.emit("restart");
+      }
+    }
+
+    function onKeyUp(e) {
+      keys.delete(e.key.toLowerCase());
+      if (["arrowleft","arrowright","arrowup","arrowdown"," "].includes(e.key.toLowerCase())) e.preventDefault();
+    }
+
+    canvas.addEventListener("pointerdown", focusGame);
+    canvas.addEventListener("mousedown", focusGame);
+    canvas.addEventListener("touchstart", focusGame, { passive: true });
+    focusLayer.addEventListener("pointerdown", focusGame);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    document.addEventListener("fullscreenchange", () => {
+      setTimeout(focusGame, 120);
+      setTimeout(focusGame, 500);
+    });
+
+    createBtn.addEventListener("click", () => {
+      createBtn.disabled = true;
+      joinBtn.disabled = true;
+      statusEl.textContent = "Oda oluşturuluyor...";
+      socket.emit("createRoom");
+    });
+
+    joinBtn.addEventListener("click", () => {
+      const code = cleanCode(roomInput.value);
+      if (code.length !== 4) {
+        statusEl.textContent = "4 karakterli oda kodunu yaz.";
+        roomInput.focus();
+        return;
+      }
+      createBtn.disabled = true;
+      joinBtn.disabled = true;
+      statusEl.textContent = code + " odasına katılınıyor...";
+      socket.emit("joinRoom", { code });
+    });
+
+    roomInput.addEventListener("input", () => {
+      roomInput.value = cleanCode(roomInput.value);
+    });
+
+    roomInput.addEventListener("keydown", (e) => {
+      if (e.key === "Enter") joinBtn.click();
+    });
+
+    copyBtn.addEventListener("click", async () => {
+      const code = roomCodeText.textContent.trim();
+      try {
+        await navigator.clipboard.writeText(code);
+        statusEl.textContent = "Kod kopyalandı: " + code;
+      } catch (e) {
+        statusEl.textContent = "Kod: " + code;
+      }
+    });
+
+    socket.on("connect", () => {
+      statusEl.textContent = "Bağlandı. Oda oluştur veya kodla katıl.";
+    });
+
+    socket.on("connect_error", () => {
+      statusEl.textContent = "Sunucuya bağlanılamadı.";
+    });
+
+    socket.on("roomCreated", ({ code }) => {
+      roomCodeText.textContent = code;
+      codePanel.classList.add("show");
+      statusEl.textContent = "Oda hazır. Kodu arkadaşına gönder.";
+    });
+
+    socket.on("joined", ({ code, role }) => {
+      myRole = role;
+      if (role === "bottom") {
+        lobby.classList.add("hidden");
+        focusGame();
+      } else {
+        statusEl.textContent = "Oda kodu: " + code + ". 2. oyuncu bekleniyor.";
+      }
+      if (!loopStarted) startLoop();
+    });
+
+    socket.on("roomInfo", ({ count }) => {
+      if (count >= 2) {
+        lobby.classList.add("hidden");
+        focusGame();
+      }
+    });
+
+    socket.on("joinError", ({ message }) => {
+      createBtn.disabled = false;
+      joinBtn.disabled = false;
+      statusEl.textContent = message;
+    });
+
+    socket.on("state", (state) => {
+      gameState = state;
+      updateUI(state);
+    });
+
+    function startLoop() {
+      loopStarted = true;
+      setInterval(sendInput, 33);
+      requestAnimationFrame(loop);
+    }
+
+    function sendInput() {
+      if (myRole === "spectator") return;
+
+      const input = {
+        left: keys.has("a") || keys.has("arrowleft"),
+        right: keys.has("d") || keys.has("arrowright"),
+        fire: keys.has("s") || keys.has("arrowup") || keys.has(" ")
+      };
+
+      const serialized = JSON.stringify(input);
+      if (serialized !== lastInput) {
+        socket.emit("input", input);
+        lastInput = serialized;
+      }
+    }
+
+    function updateUI(state) {
+      scoreTopEl.textContent = state.scoreTop || 0;
+      scoreBottomEl.textContent = state.scoreBottom || 0;
+      matchTopEl.textContent = state.matchTop || 0;
+      matchBottomEl.textContent = state.matchBottom || 0;
+
+      if (state.mode === "matchOver") {
+        winnerTextEl.textContent = state.finalWinner + " Kazandı!";
+        winnerSubEl.textContent = "R ile açıklamasız yeni maça başla";
+        messageEl.classList.add("show");
+      } else {
+        messageEl.classList.remove("show");
+      }
+    }
+
+    function draw(state) {
+      drawBackground();
+
+      if (!state) {
+        drawCenterText("SUNUCU BEKLENİYOR", "Oda oluştur veya kodla katıl.");
+        return;
+      }
+
+      if (state.mode === "finalCutscene") {
+        drawFinalCutscene(state);
+        return;
+      }
+
+      drawBandLimits();
+      drawPlayer(state.top);
+      drawPlayer(state.bottom);
+      drawBullets(state.bullets || []);
+    }
+
+    function drawBackground() {
+      ctx.fillStyle = "#c9904f";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      ctx.fillStyle = "rgba(105, 59, 24, 0.16)";
+      for (let x = -40; x < canvas.width; x += 80) ctx.fillRect(x, 0, 12, canvas.height);
+
+      ctx.fillStyle = "rgba(255, 223, 145, 0.28)";
+      for (let i = 0; i < 140; i++) {
+        const x = (i * 73) % canvas.width;
+        const y = (i * 41) % canvas.height;
+        ctx.fillRect(x, y, 3, 3);
+      }
+
+      ctx.strokeStyle = "rgba(80, 41, 14, 0.45)";
+      ctx.lineWidth = 4;
+      ctx.setLineDash([18, 14]);
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    function drawBandLimits() {
+      ctx.fillStyle = "rgba(58, 30, 10, 0.12)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height / 3);
+      ctx.fillRect(0, canvas.height * 2 / 3, canvas.width, canvas.height / 3);
+
+      ctx.strokeStyle = "rgba(255, 235, 170, 0.45)";
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 3);
+      ctx.lineTo(canvas.width, canvas.height / 3);
+      ctx.moveTo(0, canvas.height * 2 / 3);
+      ctx.lineTo(canvas.width, canvas.height * 2 / 3);
+      ctx.stroke();
+    }
+
+    function drawPlayer(p) {
+      if (!p) return;
+      const cx = p.x + p.w / 2;
+
+      ctx.save();
+      ctx.translate(cx, p.y + p.h / 2);
+      if (p.dir === -1) ctx.rotate(Math.PI);
+      ctx.translate(-cx, -(p.y + p.h / 2));
+
+      ctx.fillStyle = "rgba(0,0,0,.22)";
+      ctx.fillRect(p.x + 8, p.y + p.h - 8, p.w - 16, 8);
+
+      ctx.fillStyle = p.pants;
+      ctx.fillRect(cx - 18, p.y + 45, 14, 18);
+      ctx.fillRect(cx + 4, p.y + 45, 14, 18);
+
+      ctx.fillStyle = p.coat;
+      ctx.fillRect(cx - 19, p.y + 31, 38, 24);
+      ctx.fillStyle = "#f0d18a";
+      ctx.fillRect(cx - 4, p.y + 31, 8, 24);
+
+      ctx.fillStyle = p.coat;
+      ctx.fillRect(cx - 29, p.y + 33, 10, 20);
+      ctx.fillRect(cx + 19, p.y + 33, 10, 20);
+
+      ctx.fillStyle = p.skin;
+      ctx.fillRect(cx - 13, p.y + 16, 26, 20);
+      ctx.fillStyle = "#1b1209";
+      ctx.fillRect(cx - 7, p.y + 24, 4, 4);
+      ctx.fillRect(cx + 3, p.y + 24, 4, 4);
+
+      ctx.fillStyle = p.hat;
+      ctx.fillRect(cx - 25, p.y + 12, 50, 7);
+      ctx.fillRect(cx - 15, p.y + 4, 30, 12);
+      ctx.fillStyle = "rgba(255,255,255,.22)";
+      ctx.fillRect(cx - 10, p.y + 7, 20, 3);
+
+      ctx.fillStyle = "#2a1a0d";
+      ctx.fillRect(cx - 5, p.y + 58, 10, 12);
+      ctx.fillStyle = "#111";
+      ctx.fillRect(cx - 3, p.y + 65, 6, 10);
+
+      ctx.restore();
+    }
+
+    function drawBullets(bullets) {
+      for (const b of bullets) {
+        ctx.fillStyle = b.color;
+        ctx.shadowColor = b.color;
+        ctx.shadowBlur = 18;
+        ctx.fillRect(b.x, b.y, b.w, b.h);
+        ctx.fillStyle = "#fff";
+        ctx.fillRect(b.x + 2, b.y + 3, 2, b.h - 6);
+        ctx.shadowBlur = 0;
+      }
+    }
+
+    function drawFinalCutscene(state) {
+      const elapsed = Date.now() - state.finalStart;
+      const t = clamp(elapsed / 2000, 0, 1);
+
+      ctx.fillStyle = "rgba(0,0,0,.72)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      if (Math.floor(t * 12) % 2 === 0) {
+        ctx.fillStyle = "rgba(255,211,109,.18)";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ffd36d";
+      ctx.font = "bold 58px Courier New";
+      ctx.fillText(state.finalWinner + " KAZANDI!", canvas.width / 2, canvas.height / 2 - 40);
+
+      ctx.fillStyle = "#fff1b9";
+      ctx.font = "bold 24px Courier New";
+      ctx.fillText("MAÇ BİTTİ", canvas.width / 2, canvas.height / 2 + 10);
+
+      const y = canvas.height / 2 + 74;
+      for (let i = 0; i < 26; i++) {
+        const x = canvas.width / 2 - 170 + i * 14;
+        const h = 10 + Math.sin((Date.now() / 80) + i) * 8;
+        ctx.fillStyle = i % 2 === 0 ? "#ffd36d" : "#ff8b75";
+        ctx.fillRect(x, y - h, 8, h);
+      }
+    }
+
+    function drawCenterText(title, sub) {
+      ctx.fillStyle = "rgba(0,0,0,.55)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.textAlign = "center";
+      ctx.fillStyle = "#ffd36d";
+      ctx.font = "bold 42px Courier New";
+      ctx.fillText(title, canvas.width / 2, canvas.height / 2 - 20);
+      ctx.fillStyle = "#fff1b9";
+      ctx.font = "bold 20px Courier New";
+      ctx.fillText(sub, canvas.width / 2, canvas.height / 2 + 22);
+    }
+
+    function loop() {
+      draw(gameState);
+      requestAnimationFrame(loop);
+    }
+
+    function cleanCode(value) {
+      return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

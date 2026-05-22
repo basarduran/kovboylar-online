@@ -1,0 +1,16 @@
+{
+  "name": "yankeeler-redneckler-v16-socketio",
+  "version": "16.0.0",
+  "description": "Yankeeler vs Redneckler - Socket.IO multiplayer cowboy duel",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.3",
+    "socket.io": "^4.7.5"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
