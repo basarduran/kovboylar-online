@@ -1,6 +1,6 @@
 {
-  "name": "yankeeler-redneckler-v21-kodla-katil-fix",
-  "version": "21.0.0",
+  "name": "yankeeler-redneckler-v22-kodla-katil-garantili",
+  "version": "22.0.0",
   "description": "Yankeeler vs Redneckler - Socket.IO multiplayer cowboy duel",
   "main": "server.js",
   "scripts": {

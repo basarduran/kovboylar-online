@@ -7,7 +7,6 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*" },
-  transports: ["websocket"],
   pingInterval: 10000,
   pingTimeout: 20000
 });
@@ -284,38 +283,50 @@ function restartRoom(room) {
 }
 
 io.on("connection", (socket) => {
-  socket.on("createRoom", (payload = {}) => {
+  socket.on("createRoom", (payload = {}, ack) => {
     const preferredCode = cleanRoomCode(payload.code);
     if (preferredCode && preferredCode.length < 3) {
-      socket.emit("createError", { message: "Oda kodu en az 3 karakter olmalı." });
+      const response = { ok: false, message: "Oda kodu en az 3 karakter olmalı." };
+      socket.emit("createError", response);
+      if (typeof ack === "function") ack(response);
       return;
     }
 
     if (preferredCode && rooms.has(preferredCode)) {
-      socket.emit("createError", { message: "Bu oda kodu kullanılıyor. Başka kod seç." });
+      const response = { ok: false, message: "Bu oda kodu kullanılıyor. Başka kod seç." };
+      socket.emit("createError", response);
+      if (typeof ack === "function") ack(response);
       return;
     }
 
     const room = createRoom(socket, preferredCode);
+    const response = { ok: true, code: room.code, role: "top" };
     socket.emit("roomCreated", { code: room.code });
+    if (typeof ack === "function") ack(response);
   });
 
-  socket.on("joinRoom", ({ code }) => {
+  socket.on("joinRoom", (payload = {}, ack) => {
+    const code = payload.code;
     const cleanCode = cleanRoomCode(code);
     const room = rooms.get(cleanCode);
 
     if (!room) {
-      socket.emit("joinError", { message: "Bu oda bulunamadı. Kodu kontrol et." });
+      const response = { ok: false, message: "Bu oda bulunamadı. Kodu kontrol et.", code: cleanCode };
+      socket.emit("joinError", response);
+      if (typeof ack === "function") ack(response);
       return;
     }
 
     if (room.players.size >= 2) {
-      socket.emit("joinError", { message: "Bu oda dolu." });
+      const response = { ok: false, message: "Bu oda dolu.", code: cleanCode };
+      socket.emit("joinError", response);
+      if (typeof ack === "function") ack(response);
       return;
     }
 
     const role = getSocketByRole(room, "top") ? "bottom" : "top";
     assignPlayer(room, socket, role);
+    if (typeof ack === "function") ack({ ok: true, code: room.code, role });
   });
 
   socket.on("input", (input) => {
@@ -361,5 +372,5 @@ function clamp(value, min, max) {
 }
 
 server.listen(PORT, () => {
-  console.log(`Yankeeler vs Redneckler v21 server running on port ${PORT}`);
+  console.log(`Yankeeler vs Redneckler v22 server running on port ${PORT}`);
 });

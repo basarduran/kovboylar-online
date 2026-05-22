@@ -1,4 +1,4 @@
-# Yankeeler vs Redneckler v21 - Socket.IO
+# Yankeeler vs Redneckler v22 - Socket.IO
 
 Bu sürüm Playroom kullanmaz. Gerçek Node.js + Socket.IO sunucusu kullanır.
 
@@ -69,3 +69,11 @@ Oda kodu giriş kutusu aktifken global oyun klavye dinleyicileri devre dışı b
 - Guest tarafındaki `KODLA KATIL` kontrolü 4 karakter şartından 3-8 karakter aralığına alındı.
 - Host ve guest artık aynı 3-8 karakterli kodu kullanabilir.
 - Konsola `joinRoom` ve `joined` debug kayıtları eklendi.
+
+## v22 değişiklikleri
+
+- Kodla Katıl butonu ACK callback ile güvenceye alındı.
+- Butona basınca ekranda anında durum mesajı görünür.
+- Sunucudan 5 saniye içinde cevap gelmezse kullanıcıya timeout mesajı gösterilir.
+- Socket.IO transport kısıtlaması kaldırıldı; varsayılan polling + WebSocket upgrade fallback çalışır.
+- Server createRoom/joinRoom eventleri callback cevabı döndürür.

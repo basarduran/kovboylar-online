@@ -359,7 +359,7 @@
     const matchTopEl = document.getElementById("matchTop");
     const matchBottomEl = document.getElementById("matchBottom");
 
-    const socket = io({ transports: ["websocket", "polling"] });
+    const socket = io();
     const keys = new Set();
 
     let myRole = "spectator";
@@ -423,28 +423,77 @@
 
     createBtn.addEventListener("click", (e) => {
       e.stopPropagation();
+      ensureAudio();
       const code = cleanCode(hostCodeInput.value);
+
+      statusEl.textContent = code ? (code + " kodlu oda oluşturma isteği gönderiliyor...") : "Oda oluşturma isteği gönderiliyor...";
+      console.log("createRoom click:", code, "connected:", socket.connected);
+
       createBtn.disabled = true;
       joinBtn.disabled = true;
-      statusEl.textContent = code ? (code + " kodlu oda oluşturuluyor...") : "Oda oluşturuluyor...";
-      socket.emit("createRoom", { code });
+
+      socket.timeout(5000).emit("createRoom", { code }, (err, response) => {
+        createBtn.disabled = false;
+        joinBtn.disabled = false;
+
+        if (err) {
+          statusEl.textContent = "Oda oluşturma cevabı gelmedi. Sayfayı yenileyip tekrar dene.";
+          console.error("createRoom timeout/error", err);
+          return;
+        }
+
+        if (!response || !response.ok) {
+          statusEl.textContent = response && response.message ? response.message : "Oda oluşturulamadı.";
+          return;
+        }
+
+        statusEl.textContent = "Oda oluşturuldu: " + response.code + ". 2. oyuncu bekleniyor.";
+      });
     });
 
     joinBtn.addEventListener("click", (e) => {
       e.stopPropagation();
       ensureAudio();
       const code = cleanCode(roomInput.value);
+
+      console.log("joinBtn click:", code, "connected:", socket.connected);
+      statusEl.textContent = "KODLA KATIL butonuna basıldı. Kod: " + (code || "boş");
+
       if (code.length < 3 || code.length > 8) {
         statusEl.textContent = "3-8 karakterli oda kodunu yaz.";
         roomInput.focus();
         return;
       }
+
       createBtn.disabled = true;
       joinBtn.disabled = true;
-      statusEl.textContent = code + " odasına katılınıyor...";
-      console.log("joinRoom gönderiliyor:", code);
-      socket.emit("joinRoom", { code });
+      statusEl.textContent = code + " odasına katılma isteği gönderiliyor...";
+
+      socket.timeout(5000).emit("joinRoom", { code }, (err, response) => {
+        createBtn.disabled = false;
+        joinBtn.disabled = false;
+
+        if (err) {
+          statusEl.textContent = "Sunucudan katılma cevabı gelmedi. Sayfayı yenileyip tekrar dene.";
+          console.error("joinRoom timeout/error", err);
+          return;
+        }
+
+        console.log("joinRoom ACK:", response);
+
+        if (!response || !response.ok) {
+          statusEl.textContent = response && response.message ? response.message : "Odaya katılamadı.";
+          roomInput.focus();
+          return;
+        }
+
+        statusEl.textContent = response.code + " odasına katıldın. Rol: " + response.role;
+      });
     });
+
+    // Ek güvenlik: bazı tarayıcı/overlay durumlarında click listener kaçarsa buton property de aynı işi tetikler.
+    joinBtn.onclick = null;
+    createBtn.onclick = null;
 
     hostCodeInput.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
@@ -514,11 +563,23 @@
     });
 
     socket.on("connect", () => {
-      statusEl.textContent = "Bağlandı. Kodu yazmak için kutuya tıkla; klavye artık inputta çalışır.";
+      statusEl.textContent = "Sunucuya bağlandı. Oda oluşturabilir veya kodla katılabilirsin.";
+      createBtn.disabled = false;
+      joinBtn.disabled = false;
     });
 
-    socket.on("connect_error", () => {
-      statusEl.textContent = "Sunucuya bağlanılamadı.";
+    socket.on("serverReady", () => {
+      console.log("serverReady alındı");
+    });
+
+    socket.on("disconnect", () => {
+      statusEl.textContent = "Bağlantı koptu, yeniden bağlanıyor...";
+    });
+
+    socket.on("connect_error", (err) => {
+      statusEl.textContent = "Sunucuya bağlanılamadı: " + (err && err.message ? err.message : "bağlantı hatası");
+      createBtn.disabled = false;
+      joinBtn.disabled = false;
     });
 
     socket.on("roomCreated", ({ code }) => {
@@ -549,13 +610,13 @@
     socket.on("joinError", ({ message }) => {
       createBtn.disabled = false;
       joinBtn.disabled = false;
-      statusEl.textContent = message;
+      statusEl.textContent = message || "Katılma hatası.";
     });
 
     socket.on("createError", ({ message }) => {
       createBtn.disabled = false;
       joinBtn.disabled = false;
-      statusEl.textContent = message;
+      statusEl.textContent = message || "Oda oluşturma hatası.";
     });
 
     socket.on("hitEffect", (effect) => {
