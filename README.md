@@ -1,4 +1,4 @@
-# Yankeeler vs Redneckler v20 - Socket.IO
+# Yankeeler vs Redneckler v21 - Socket.IO
 
 Bu sürüm Playroom kullanmaz. Gerçek Node.js + Socket.IO sunucusu kullanır.
 
@@ -61,3 +61,11 @@ Oda kodu giriş kutusu aktifken global oyun klavye dinleyicileri devre dışı b
 - Bu 0,5 saniyelik sürede oyuncu tekrar vurulamaz.
 - Hit event güvenilir Socket.IO eventi olarak ayrıca gönderilir; efekt/ses state paketinden bağımsız çalışır.
 - Vurulma sesi Web Audio API ile tarayıcıda sentezlenir; harici ses dosyası gerekmez.
+
+## v21 değişiklikleri
+
+- Kodla Katıl hatası düzeltildi.
+- Önceki sürümde host manuel kodu 3-8 karakter gibi görünse de istemci `cleanCode()` kodu 4 karaktere kesiyordu.
+- Guest tarafındaki `KODLA KATIL` kontrolü 4 karakter şartından 3-8 karakter aralığına alındı.
+- Host ve guest artık aynı 3-8 karakterli kodu kullanabilir.
+- Konsola `joinRoom` ve `joined` debug kayıtları eklendi.

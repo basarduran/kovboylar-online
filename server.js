@@ -361,5 +361,5 @@ function clamp(value, min, max) {
 }
 
 server.listen(PORT, () => {
-  console.log(`Yankeeler vs Redneckler v20 server running on port ${PORT}`);
+  console.log(`Yankeeler vs Redneckler v21 server running on port ${PORT}`);
 });

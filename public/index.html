@@ -309,7 +309,7 @@
           </div>
 
           <div class="joinRow">
-            <input id="roomInput" class="roomInput" maxlength="4" placeholder="ODA KODU" />
+            <input id="roomInput" class="roomInput" maxlength="8" placeholder="ODA KODU" />
             <button id="joinBtn" class="joinBtn">KODLA KATIL</button>
           </div>
 
@@ -434,14 +434,15 @@
       e.stopPropagation();
       ensureAudio();
       const code = cleanCode(roomInput.value);
-      if (code.length !== 4) {
-        statusEl.textContent = "4 karakterli oda kodunu yaz.";
+      if (code.length < 3 || code.length > 8) {
+        statusEl.textContent = "3-8 karakterli oda kodunu yaz.";
         roomInput.focus();
         return;
       }
       createBtn.disabled = true;
       joinBtn.disabled = true;
       statusEl.textContent = code + " odasına katılınıyor...";
+      console.log("joinRoom gönderiliyor:", code);
       socket.emit("joinRoom", { code });
     });
 
@@ -527,6 +528,7 @@
     });
 
     socket.on("joined", ({ code, role }) => {
+      console.log("joined:", code, role);
       myRole = role;
       if (role === "bottom") {
         lobby.classList.add("hidden");
@@ -842,7 +844,7 @@
     }
 
     function cleanCode(value) {
-      return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
+      return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
     }
 
     function clamp(value, min, max) {
