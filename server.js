@@ -7,6 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*" },
+  transports: ["websocket"],
   pingInterval: 10000,
   pingTimeout: 20000
 });
@@ -17,7 +18,6 @@ const PORT = process.env.PORT || 3000;
 const WIN_SCORE = 5;
 const START_NO_FIRE_MS = 1000;
 const FINAL_CUTSCENE_MS = 2000;
-const HIT_INVULNERABLE_MS = 500;
 const TICK_MS = 1000 / 90; // v19: 90 FPS sunucu tick
 
 const CANVAS = { w: 1000, h: 600 };
@@ -73,9 +73,7 @@ function newPlayer(role) {
     maxAmmo: 6,
     reloading: false,
     reloadEnd: 0,
-    fireLock: false,
-    invulnerableUntil: 0,
-    hitFlashUntil: 0
+    fireLock: false
   };
 }
 
@@ -228,25 +226,15 @@ function updateBullets(room, dt, now) {
 
     const target = b.ownerRole === "top" ? s.bottom : s.top;
     if (rectsOverlap(b, target)) {
-      // Vurulma sonrası 0,5 sn boyunca tekrar vurulamaz.
-      if (target.invulnerableUntil && now < target.invulnerableUntil) {
-        s.bullets.splice(i, 1);
-        continue;
-      }
-      roundHit(room, b.ownerRole, target.role, now, target);
+      roundHit(room, b.ownerRole, target.role, now);
       break;
     }
   }
 }
 
-function roundHit(room, winnerRole, loserRole, now, targetPlayer) {
+function roundHit(room, winnerRole, loserRole, now) {
   const s = room.state;
   s.bullets = [];
-
-  if (targetPlayer) {
-    targetPlayer.invulnerableUntil = now + HIT_INVULNERABLE_MS;
-    targetPlayer.hitFlashUntil = now + HIT_INVULNERABLE_MS;
-  }
 
   if (winnerRole === "top") s.scoreTop++;
   else s.scoreBottom++;
@@ -264,14 +252,6 @@ function roundHit(room, winnerRole, loserRole, now, targetPlayer) {
     s.finalLoserRole = loserRole;
   }
 
-  const target = loserRole === "top" ? s.top : s.bottom;
-  io.to(room.code).emit("hitEffect", {
-    role: loserRole,
-    x: target.x + target.w / 2,
-    y: target.y + target.h / 2,
-    until: now + HIT_INVULNERABLE_MS
-  });
-
   // Her skor sonrası konum korunur. Sadece mermiler temizlenir.
 }
 
@@ -283,50 +263,38 @@ function restartRoom(room) {
 }
 
 io.on("connection", (socket) => {
-  socket.on("createRoom", (payload = {}, ack) => {
+  socket.on("createRoom", (payload = {}) => {
     const preferredCode = cleanRoomCode(payload.code);
     if (preferredCode && preferredCode.length < 3) {
-      const response = { ok: false, message: "Oda kodu en az 3 karakter olmalı." };
-      socket.emit("createError", response);
-      if (typeof ack === "function") ack(response);
+      socket.emit("createError", { message: "Oda kodu en az 3 karakter olmalı." });
       return;
     }
 
     if (preferredCode && rooms.has(preferredCode)) {
-      const response = { ok: false, message: "Bu oda kodu kullanılıyor. Başka kod seç." };
-      socket.emit("createError", response);
-      if (typeof ack === "function") ack(response);
+      socket.emit("createError", { message: "Bu oda kodu kullanılıyor. Başka kod seç." });
       return;
     }
 
     const room = createRoom(socket, preferredCode);
-    const response = { ok: true, code: room.code, role: "top" };
     socket.emit("roomCreated", { code: room.code });
-    if (typeof ack === "function") ack(response);
   });
 
-  socket.on("joinRoom", (payload = {}, ack) => {
-    const code = payload.code;
+  socket.on("joinRoom", ({ code }) => {
     const cleanCode = cleanRoomCode(code);
     const room = rooms.get(cleanCode);
 
     if (!room) {
-      const response = { ok: false, message: "Bu oda bulunamadı. Kodu kontrol et.", code: cleanCode };
-      socket.emit("joinError", response);
-      if (typeof ack === "function") ack(response);
+      socket.emit("joinError", { message: "Bu oda bulunamadı. Kodu kontrol et." });
       return;
     }
 
     if (room.players.size >= 2) {
-      const response = { ok: false, message: "Bu oda dolu.", code: cleanCode };
-      socket.emit("joinError", response);
-      if (typeof ack === "function") ack(response);
+      socket.emit("joinError", { message: "Bu oda dolu." });
       return;
     }
 
     const role = getSocketByRole(room, "top") ? "bottom" : "top";
     assignPlayer(room, socket, role);
-    if (typeof ack === "function") ack({ ok: true, code: room.code, role });
   });
 
   socket.on("input", (input) => {
@@ -372,5 +340,5 @@ function clamp(value, min, max) {
 }
 
 server.listen(PORT, () => {
-  console.log(`Yankeeler vs Redneckler v22 server running on port ${PORT}`);
+  console.log(`Yankeeler vs Redneckler v23 rollback-v19 server running on port ${PORT}`);
 });

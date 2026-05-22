@@ -1,4 +1,4 @@
-# Yankeeler vs Redneckler v22 - Socket.IO
+# Yankeeler vs Redneckler v23 Rollback v19 - Socket.IO
 
 Bu sürüm Playroom kullanmaz. Gerçek Node.js + Socket.IO sunucusu kullanır.
 
@@ -54,26 +54,8 @@ Oda kodu giriş kutusu aktifken global oyun klavye dinleyicileri devre dışı b
 - Sunucu tick oranı 60 FPS'ten 90 FPS'e çıkarıldı.
 - Oyun state yayınında volatile + compress(false) kullanılıyor.
 
-## v20 değişiklikleri
+## v23 rollback notu
 
-- Her isabet anında vurulan oyuncunun üzerinde basit kan efekti çıkar.
-- Vurulan oyuncu 0,5 saniye kırmızı flaş gibi yanıp söner.
-- Bu 0,5 saniyelik sürede oyuncu tekrar vurulamaz.
-- Hit event güvenilir Socket.IO eventi olarak ayrıca gönderilir; efekt/ses state paketinden bağımsız çalışır.
-- Vurulma sesi Web Audio API ile tarayıcıda sentezlenir; harici ses dosyası gerekmez.
-
-## v21 değişiklikleri
-
-- Kodla Katıl hatası düzeltildi.
-- Önceki sürümde host manuel kodu 3-8 karakter gibi görünse de istemci `cleanCode()` kodu 4 karaktere kesiyordu.
-- Guest tarafındaki `KODLA KATIL` kontrolü 4 karakter şartından 3-8 karakter aralığına alındı.
-- Host ve guest artık aynı 3-8 karakterli kodu kullanabilir.
-- Konsola `joinRoom` ve `joined` debug kayıtları eklendi.
-
-## v22 değişiklikleri
-
-- Kodla Katıl butonu ACK callback ile güvenceye alındı.
-- Butona basınca ekranda anında durum mesajı görünür.
-- Sunucudan 5 saniye içinde cevap gelmezse kullanıcıya timeout mesajı gösterilir.
-- Socket.IO transport kısıtlaması kaldırıldı; varsayılan polling + WebSocket upgrade fallback çalışır.
-- Server createRoom/joinRoom eventleri callback cevabı döndürür.
+Bu paket v19 Hızlı Netcode çalışan tabanına geri dönüş paketidir.
+v20/v21/v22 ile eklenen kan efekti, ses efekti ve Kodla Katıl denemeleri geri alınmıştır.
+Ama v19'daki hızlı netcode, client-side prediction, manuel oda kodu ve eski final cutscene korunmuştur.

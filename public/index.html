@@ -309,7 +309,7 @@
           </div>
 
           <div class="joinRow">
-            <input id="roomInput" class="roomInput" maxlength="8" placeholder="ODA KODU" />
+            <input id="roomInput" class="roomInput" maxlength="4" placeholder="ODA KODU" />
             <button id="joinBtn" class="joinBtn">KODLA KATIL</button>
           </div>
 
@@ -359,7 +359,7 @@
     const matchTopEl = document.getElementById("matchTop");
     const matchBottomEl = document.getElementById("matchBottom");
 
-    const socket = io();
+    const socket = io({ transports: ["websocket", "polling"] });
     const keys = new Set();
 
     let myRole = "spectator";
@@ -392,7 +392,6 @@
       }
 
       focusGame();
-      ensureAudio();
       keys.add(e.key.toLowerCase());
       if (["arrowleft","arrowright","arrowup","arrowdown"," "].includes(e.key.toLowerCase())) e.preventDefault();
 
@@ -423,77 +422,26 @@
 
     createBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      ensureAudio();
       const code = cleanCode(hostCodeInput.value);
-
-      statusEl.textContent = code ? (code + " kodlu oda oluşturma isteği gönderiliyor...") : "Oda oluşturma isteği gönderiliyor...";
-      console.log("createRoom click:", code, "connected:", socket.connected);
-
       createBtn.disabled = true;
       joinBtn.disabled = true;
-
-      socket.timeout(5000).emit("createRoom", { code }, (err, response) => {
-        createBtn.disabled = false;
-        joinBtn.disabled = false;
-
-        if (err) {
-          statusEl.textContent = "Oda oluşturma cevabı gelmedi. Sayfayı yenileyip tekrar dene.";
-          console.error("createRoom timeout/error", err);
-          return;
-        }
-
-        if (!response || !response.ok) {
-          statusEl.textContent = response && response.message ? response.message : "Oda oluşturulamadı.";
-          return;
-        }
-
-        statusEl.textContent = "Oda oluşturuldu: " + response.code + ". 2. oyuncu bekleniyor.";
-      });
+      statusEl.textContent = code ? (code + " kodlu oda oluşturuluyor...") : "Oda oluşturuluyor...";
+      socket.emit("createRoom", { code });
     });
 
     joinBtn.addEventListener("click", (e) => {
       e.stopPropagation();
-      ensureAudio();
       const code = cleanCode(roomInput.value);
-
-      console.log("joinBtn click:", code, "connected:", socket.connected);
-      statusEl.textContent = "KODLA KATIL butonuna basıldı. Kod: " + (code || "boş");
-
-      if (code.length < 3 || code.length > 8) {
-        statusEl.textContent = "3-8 karakterli oda kodunu yaz.";
+      if (code.length !== 4) {
+        statusEl.textContent = "4 karakterli oda kodunu yaz.";
         roomInput.focus();
         return;
       }
-
       createBtn.disabled = true;
       joinBtn.disabled = true;
-      statusEl.textContent = code + " odasına katılma isteği gönderiliyor...";
-
-      socket.timeout(5000).emit("joinRoom", { code }, (err, response) => {
-        createBtn.disabled = false;
-        joinBtn.disabled = false;
-
-        if (err) {
-          statusEl.textContent = "Sunucudan katılma cevabı gelmedi. Sayfayı yenileyip tekrar dene.";
-          console.error("joinRoom timeout/error", err);
-          return;
-        }
-
-        console.log("joinRoom ACK:", response);
-
-        if (!response || !response.ok) {
-          statusEl.textContent = response && response.message ? response.message : "Odaya katılamadı.";
-          roomInput.focus();
-          return;
-        }
-
-        statusEl.textContent = response.code + " odasına katıldın. Rol: " + response.role;
-      });
+      statusEl.textContent = code + " odasına katılınıyor...";
+      socket.emit("joinRoom", { code });
     });
-
-    // Ek güvenlik: bazı tarayıcı/overlay durumlarında click listener kaçarsa buton property de aynı işi tetikler.
-    joinBtn.onclick = null;
-    createBtn.onclick = null;
 
     hostCodeInput.addEventListener("pointerdown", (e) => {
       e.stopPropagation();
@@ -563,23 +511,11 @@
     });
 
     socket.on("connect", () => {
-      statusEl.textContent = "Sunucuya bağlandı. Oda oluşturabilir veya kodla katılabilirsin.";
-      createBtn.disabled = false;
-      joinBtn.disabled = false;
+      statusEl.textContent = "Bağlandı. Kodu yazmak için kutuya tıkla; klavye artık inputta çalışır.";
     });
 
-    socket.on("serverReady", () => {
-      console.log("serverReady alındı");
-    });
-
-    socket.on("disconnect", () => {
-      statusEl.textContent = "Bağlantı koptu, yeniden bağlanıyor...";
-    });
-
-    socket.on("connect_error", (err) => {
-      statusEl.textContent = "Sunucuya bağlanılamadı: " + (err && err.message ? err.message : "bağlantı hatası");
-      createBtn.disabled = false;
-      joinBtn.disabled = false;
+    socket.on("connect_error", () => {
+      statusEl.textContent = "Sunucuya bağlanılamadı.";
     });
 
     socket.on("roomCreated", ({ code }) => {
@@ -589,7 +525,6 @@
     });
 
     socket.on("joined", ({ code, role }) => {
-      console.log("joined:", code, role);
       myRole = role;
       if (role === "bottom") {
         lobby.classList.add("hidden");
@@ -610,18 +545,13 @@
     socket.on("joinError", ({ message }) => {
       createBtn.disabled = false;
       joinBtn.disabled = false;
-      statusEl.textContent = message || "Katılma hatası.";
+      statusEl.textContent = message;
     });
 
     socket.on("createError", ({ message }) => {
       createBtn.disabled = false;
       joinBtn.disabled = false;
-      statusEl.textContent = message || "Oda oluşturma hatası.";
-    });
-
-    socket.on("hitEffect", (effect) => {
-      addHitEffect(effect);
-      playHitSound();
+      statusEl.textContent = message;
     });
 
     socket.on("state", (state) => {
@@ -726,18 +656,6 @@
 
     function drawPlayer(p) {
       if (!p) return;
-
-      const nowMs = Date.now();
-      const isHitFlashing = p.hitFlashUntil && nowMs < p.hitFlashUntil;
-      if (isHitFlashing && Math.floor(nowMs / 70) % 2 === 0) {
-        ctx.save();
-        ctx.shadowColor = "#ff1b1b";
-        ctx.shadowBlur = 26;
-        ctx.fillStyle = "rgba(255, 0, 0, 0.55)";
-        ctx.fillRect(p.x - 8, p.y - 8, p.w + 16, p.h + 16);
-        ctx.restore();
-      }
-
       const cx = p.x + p.w / 2;
 
       ctx.save();
@@ -905,7 +823,7 @@
     }
 
     function cleanCode(value) {
-      return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8);
+      return String(value || "").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 4);
     }
 
     function clamp(value, min, max) {
