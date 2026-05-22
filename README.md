@@ -1,4 +1,4 @@
-# Yankeeler vs Redneckler v18 - Socket.IO
+# Yankeeler vs Redneckler v19 - Socket.IO
 
 Bu sürüm Playroom kullanmaz. Gerçek Node.js + Socket.IO sunucusu kullanır.
 
@@ -44,3 +44,12 @@ Oda kodu giriş kutusu aktifken global oyun klavye dinleyicileri devre dışı b
 - Oyun state yayını `volatile.emit` ile gönderilir; eski pozisyon paketleri birikmez.
 - Client bağlantısı WebSocket'i önceliklendirir.
 - Socket.IO ping ayarları daha kısa aralıkla bağlantı sağlığını kontrol edecek şekilde ayarlandı.
+
+## v19 değişiklikleri
+
+- Client-side prediction eklendi: oyuncu kendi ekranında yönlendirmeyi anında görür.
+- Lokal görsel mermi efekti eklendi: ateş tuşuna basınca ışın hemen görünür, sunucu sonucu arkadan doğrular.
+- Input gönderimi 33ms yerine 16ms aralığa çekildi ve keydown/keyup anında input gönderiliyor.
+- Socket.IO yalnızca WebSocket transport ile çalışacak şekilde ayarlandı.
+- Sunucu tick oranı 60 FPS'ten 90 FPS'e çıkarıldı.
+- Oyun state yayınında volatile + compress(false) kullanılıyor.

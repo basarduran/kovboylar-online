@@ -7,7 +7,7 @@ const app = express();
 const server = http.createServer(app);
 const io = new Server(server, {
   cors: { origin: "*" },
-  transports: ["websocket", "polling"],
+  transports: ["websocket"],
   pingInterval: 10000,
   pingTimeout: 20000
 });
@@ -18,7 +18,7 @@ const PORT = process.env.PORT || 3000;
 const WIN_SCORE = 5;
 const START_NO_FIRE_MS = 1000;
 const FINAL_CUTSCENE_MS = 2000;
-const TICK_MS = 1000 / 60; // 60 FPS sunucu tick
+const TICK_MS = 1000 / 90; // v19: 90 FPS sunucu tick
 
 const CANVAS = { w: 1000, h: 600 };
 const movementBand = CANVAS.h / 3;
@@ -163,7 +163,7 @@ function tickRoom(room) {
   }
 
   if (s.mode === "playing") {
-    io.to(room.code).volatile.emit("state", s);
+    io.to(room.code).volatile.compress(false).emit("state", s);
   } else {
     io.to(room.code).emit("state", s);
   }
@@ -340,5 +340,5 @@ function clamp(value, min, max) {
 }
 
 server.listen(PORT, () => {
-  console.log(`Yankeeler vs Redneckler v18 server running on port ${PORT}`);
+  console.log(`Yankeeler vs Redneckler v19 server running on port ${PORT}`);
 });
